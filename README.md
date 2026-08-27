@@ -47,7 +47,7 @@ Arka planda popüler açık kaynaklı CLI aracı **`claude-swap` (cswap)** ile e
 1. **Python 3.9+** kurulu olmalıdır.
 2. **`claude-swap` (cswap)** CLI aracı kurulu ve hesaplar eklenmiş olmalıdır:
    ```bash
-   # uv ile:
+   # uv ile (Önerilen):
    uv tool install claude-swap
 
    # veya pipx ile:
@@ -55,12 +55,17 @@ Arka planda popüler açık kaynaklı CLI aracı **`claude-swap` (cswap)** ile e
    ```
    > Hesap eklemek için: `cswap add` veya `cswap add-token <TOKEN>` komutlarını kullanabilirsiniz.
 
-### 2. Projeyi İndirme ve Bağımlılıkları Yükleme
+### 2. Projeyi İndirme ve Yükleme
 
 ```bash
 git clone https://github.com/tahakdgn/cswap-widget.git
 cd cswap-widget
+
+# Bağımlılıkları yükleyin:
 pip install -r requirements.txt
+
+# veya paketi yerel olarak geliştirme modunda kurun (CLI komutu `cswap-widget` ekler):
+pip install -e .
 ```
 
 ---
@@ -69,34 +74,66 @@ pip install -r requirements.txt
 
 ### Widget'ı Başlatma
 
-- **Komut Satırından:**
+- **Kök Dizinden (Kolay Başlatıcı):**
   ```bash
-  python widget.py
+  python run.py
   ```
-- **Arka Planda Konsolsuz Başlatma:**
-  `başlat.bat` dosyasına çift tıklayarak veya `pythonw widget.py` komutuyla başlatabilirsiniz.
+- **Modül Olarak Başlatma:**
+  ```bash
+  python -m cswap_widget
+  ```
+- **Paket Olarak Kurulduğunda:**
+  ```bash
+  cswap-widget
+  ```
+- **Arka Planda Konsolsuz Başlatma (Windows):**
+  `scripts/start.bat` dosyasına çift tıklayarak veya `pythonw run.py` komutuyla arka planda açabilirsiniz.
 
 ### Masaüstü Kısayolu Oluşturma
 
-Tek tıkla masaüstünüze kısayol eklemek için:
+Tek tıkla masaüstünüze kısayol oluşturmak için:
 ```bash
-python make_shortcut.py
+python scripts/make_shortcut.py
 ```
-Masaüstünüzde `cswap Widget` adında doğrudan başlatılabilir bir kısayol oluşturulacaktır.
+Masaüstünüzde `cswap Widget` adında doğrudan çalıştırılabilir bir kısayol oluşturulacaktır.
 
 ---
 
-## 🏗️ Proje Yapısı
+## 🏗️ Proje Mimarisi
 
-```
+```text
 cswap-widget/
-├── widget.py          # PyQt6 tabanlı ana arayüz, tema sistemi ve tray yönetimi
-├── parser.py          # cswap CLI komutlarını çalıştıran ve çıktıyı ayrıştıran motor
-├── make_shortcut.py   # Windows için otomatik masaüstü kısayolu oluşturucu
-├── başlat.bat         # Konsolsuz hızlı başlatma betiği
-├── requirements.txt   # Gerekli Python paketleri
-├── LICENSE            # MIT Lisansı
-└── README.md          # Proje dökümantasyonu
+├── .github/
+│   └── workflows/
+│       └── ci.yml               # GitHub Actions CI (Syntax, Lint & Build)
+├── src/
+│   └── cswap_widget/
+│       ├── __init__.py          # Paket versiyonu ve meta veriler
+│       ├── __main__.py          # `python -m cswap_widget` desteği
+│       ├── main.py              # Uygulama lifecycle ve QApplication başlatıcı
+│       ├── core/                # Çekirdek mantık ve veri modelleri
+│       │   ├── __init__.py
+│       │   ├── models.py        # AccountStatus veri yapısı
+│       │   ├── parser.py        # cswap CLI regex ayrıştırıcı
+│       │   └── executor.py      # Subprocess çağrıları ve komut yürütücü
+│       ├── ui/                  # Arayüz bileşenleri ve stil sistemi
+│       │   ├── __init__.py
+│       │   ├── themes.py        # Koyu/Açık tema tokenları ve renk hesapları
+│       │   ├── card.py          # Hesap kartı (AccountCard) bileşeni
+│       │   ├── widget.py        # Ana pencere (CSwapWidget) ve sürükleme mantığı
+│       │   └── tray.py          # Sistem tepsisi (System Tray) menüsü
+│       └── utils/               # Yardımcı araçlar
+│           ├── __init__.py
+│           └── shortcut.py      # Dinamik masaüstü kısayol oluşturucu
+├── scripts/
+│   ├── start.bat                # Windows arka plan başlatma scripti
+│   └── make_shortcut.py         # Kısayol oluşturma aracı
+├── pyproject.toml               # PEP 517/621 modern Python paket standardı
+├── requirements.txt             # Bağımlılıklar (PyQt6)
+├── run.py                       # Hızlı başlatıcı giriş noktası
+├── .gitignore                   # Git temizleme kuralları
+├── LICENSE                      # MIT Lisansı
+└── README.md                    # Proje dökümantasyonu
 ```
 
 ---

@@ -1,14 +1,29 @@
 import subprocess
 from typing import List, Optional, Tuple
 from .models import AccountStatus
-from .parser import parse_cswap_output
+from .parser import parse_cswap_output, parse_cswap_json
 
 
 def fetch_cswap_accounts() -> Tuple[List[AccountStatus], Optional[str]]:
     """
-    Executes `cswap list` and returns parsed accounts and an optional error message.
+    Executes `cswap list --json` (falling back to `cswap list`) and returns parsed accounts.
     """
     try:
+        # First try JSON output for maximum reliability
+        json_res = subprocess.run(
+            ["cswap", "list", "--json"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            shell=True,
+            timeout=15
+        )
+        if json_res.returncode == 0 and json_res.stdout.strip().startswith("{"):
+            accounts = parse_cswap_json(json_res.stdout)
+            if accounts:
+                return accounts, None
+
+        # Fallback to standard text output
         result = subprocess.run(
             ["cswap", "list"],
             capture_output=True,
@@ -24,6 +39,7 @@ def fetch_cswap_accounts() -> Tuple[List[AccountStatus], Optional[str]]:
         return parse_cswap_output(output), None
     except Exception as e:
         return [], str(e)
+
 
 
 def switch_to_best_account() -> Tuple[bool, str]:

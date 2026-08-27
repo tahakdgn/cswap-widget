@@ -1,5 +1,12 @@
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Optional, List
+
+
+@dataclass
+class ScopedQuota:
+    """Represents an additional scoped model quota (such as Fable)."""
+    name: str
+    pct: int
 
 
 @dataclass
@@ -15,3 +22,6 @@ class AccountStatus:
     seven_day_pct: int
     seven_day_reset_time: Optional[str]
     seven_day_reset_in: Optional[str]
+    scoped_quotas: List[ScopedQuota] = field(default_factory=list)
+    is_max_plan: bool = False
+

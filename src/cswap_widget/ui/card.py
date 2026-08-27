@@ -63,6 +63,32 @@ class AccountCard(QFrame):
         )
         top_row.addWidget(email_label, 1)
 
+        # Plan Rozeti (MAX PLAN veya PRO)
+        if self.acc.is_max_plan:
+            plan_badge = QLabel("⚡ MAX PLAN")
+            plan_badge.setStyleSheet("""
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #7c3aed, stop:1 #c026d3);
+                color: #ffffff;
+                font-weight: 800;
+                font-size: 10px;
+                padding: 2px 8px;
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.25);
+            """)
+            top_row.addWidget(plan_badge)
+        else:
+            pro_badge = QLabel("PRO")
+            pro_badge.setStyleSheet(f"""
+                background-color: {t['header_btn_bg']};
+                color: {t['text_secondary']};
+                border: 1px solid {t['card_border']};
+                font-weight: bold;
+                font-size: 10px;
+                padding: 2px 6px;
+                border-radius: 8px;
+            """)
+            top_row.addWidget(pro_badge)
+
         if is_active:
             active_badge = QLabel("● Aktif")
             active_badge.setStyleSheet("""
@@ -112,6 +138,16 @@ class AccountCard(QFrame):
             reset_time=self.acc.seven_day_reset_time,
             reset_in=self.acc.seven_day_reset_in
         ))
+
+        # Scoped / Fable Model Quotas
+        for scoped in self.acc.scoped_quotas:
+            layout.addLayout(self._create_quota_row(
+                title=f"🔮 {scoped.name} Modeli Kotası",
+                pct=scoped.pct,
+                reset_time=None,
+                reset_in=None
+            ))
+
 
     def _create_quota_row(self, title: str, pct: int, reset_time: str, reset_in: str) -> QVBoxLayout:
         t = self.theme

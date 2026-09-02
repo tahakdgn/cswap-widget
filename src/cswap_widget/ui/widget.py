@@ -1,15 +1,44 @@
 import os
 from datetime import datetime
-from PyQt6.QtCore import Qt, QTimer, QPoint, QThread, pyqtSignal, QSettings
+from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QSettings
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QScrollArea, QGraphicsDropShadowEffect, QApplication
+    QFrame, QScrollArea, QApplication
 )
 
 from ..core.executor import fetch_cswap_accounts, switch_to_best_account, switch_to_account_id
 from .themes import THEMES
 from .card import AccountCard
 from .tray import SystemTrayManager
+
+
+HEADER_BTN_QSS = """
+    QPushButton {{
+        background-color: {header_btn_bg};
+        color: {text_primary};
+        border: 1px solid {card_border};
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: bold;
+    }}
+    QPushButton:hover {{
+        background-color: {header_btn_hover};
+    }}
+"""
+
+CLOSE_BTN_HOVER = "QPushButton:hover { background-color: #da3633; color: #ffffff; }"
+
+RESIZE_MARGIN = 7
+RESIZE_CURSORS = {
+    Qt.Edge.LeftEdge: Qt.CursorShape.SizeHorCursor,
+    Qt.Edge.RightEdge: Qt.CursorShape.SizeHorCursor,
+    Qt.Edge.TopEdge: Qt.CursorShape.SizeVerCursor,
+    Qt.Edge.BottomEdge: Qt.CursorShape.SizeVerCursor,
+    Qt.Edge.LeftEdge | Qt.Edge.TopEdge: Qt.CursorShape.SizeFDiagCursor,
+    Qt.Edge.RightEdge | Qt.Edge.BottomEdge: Qt.CursorShape.SizeFDiagCursor,
+    Qt.Edge.RightEdge | Qt.Edge.TopEdge: Qt.CursorShape.SizeBDiagCursor,
+    Qt.Edge.LeftEdge | Qt.Edge.BottomEdge: Qt.CursorShape.SizeBDiagCursor,
+}
 
 
 class WorkerThread(QThread):
@@ -34,13 +63,13 @@ class CSwapWidget(QWidget):
         self.settings = QSettings("cswap", "widget")
         self.theme_name = self.settings.value("theme", "dark")
         self.is_pinned = self.settings.value("pinned", True, type=bool)
-        self.drag_position = QPoint()
         self.next_refresh_seconds = 3600  # 1 hour
         self.accounts = []
         self.worker = None
 
         self._init_window_flags()
         self._init_ui()
+        self._enable_mouse_tracking()
         self._restore_position()
         self._init_timers()
         self.tray = SystemTrayManager(self)
@@ -53,7 +82,7 @@ class CSwapWidget(QWidget):
             Qt.WindowType.SubWindow
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setMinimumSize(420, 520)
+        self.setMinimumSize(340, 320)
         self.resize(430, 600)
 
     def _restore_position(self):
@@ -76,18 +105,11 @@ class CSwapWidget(QWidget):
         t = THEMES[self.theme_name]
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
         self.container = QFrame(self)
         self.container.setObjectName("container")
         self.apply_container_style()
-
-        # Drop shadow
-        self.shadow = QGraphicsDropShadowEffect(self)
-        self.shadow.setBlurRadius(38)
-        self.shadow.setColor(t["shadow_color"])
-        self.shadow.setOffset(0, 10)
-        self.container.setGraphicsEffect(self.shadow)
 
         container_layout = QVBoxLayout(self.container)
         container_layout.setContentsMargins(16, 16, 16, 16)
@@ -112,14 +134,14 @@ class CSwapWidget(QWidget):
         self.theme_btn.clicked.connect(self.toggle_theme)
         header_layout.addWidget(self.theme_btn)
 
-        min_btn = self._create_header_btn("—", "Simge Durumuna Küçült")
-        min_btn.clicked.connect(self.hide_to_tray)
-        header_layout.addWidget(min_btn)
+        self.min_btn = self._create_header_btn("—", "Simge Durumuna Küçült")
+        self.min_btn.clicked.connect(self.hide_to_tray)
+        header_layout.addWidget(self.min_btn)
 
-        close_btn = self._create_header_btn("✕", "Kapat")
-        close_btn.setStyleSheet(close_btn.styleSheet() + "QPushButton:hover { background-color: #da3633; color: white; }")
-        close_btn.clicked.connect(QApplication.instance().quit)
-        header_layout.addWidget(close_btn)
+        self.close_btn = self._create_header_btn("✕", "Kapat")
+        self.close_btn.setStyleSheet(self.close_btn.styleSheet() + CLOSE_BTN_HOVER)
+        self.close_btn.clicked.connect(QApplication.instance().quit)
+        header_layout.addWidget(self.close_btn)
 
         container_layout.addLayout(header_layout)
 
@@ -164,32 +186,28 @@ class CSwapWidget(QWidget):
         container_layout.addWidget(self.scroll_area, 1)
 
         # 5. Footer Label
+        footer_row = QHBoxLayout()
+        footer_row.setContentsMargins(0, 0, 0, 0)
         self.footer_label = QLabel("⏱️ Otomatik yenileme her saat başı")
         self.footer_label.setStyleSheet(f"font-size: 10px; color: {t['text_muted']};")
         self.footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        container_layout.addWidget(self.footer_label)
+        footer_row.addWidget(self.footer_label, 1)
+        container_layout.addLayout(footer_row)
 
         main_layout.addWidget(self.container)
 
+    def _enable_mouse_tracking(self):
+        """Edge-hover cursors need move events even when no button is held."""
+        self.setMouseTracking(True)
+        for child in self.findChildren(QWidget):
+            child.setMouseTracking(True)
+
     def _create_header_btn(self, text: str, tooltip: str) -> QPushButton:
-        t = THEMES[self.theme_name]
         btn = QPushButton(text)
         btn.setToolTip(tooltip)
         btn.setFixedSize(28, 28)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {t['header_btn_bg']};
-                color: {t['text_primary']};
-                border: 1px solid {t['card_border']};
-                border-radius: 6px;
-                font-size: 12px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{
-                background-color: {t['header_btn_hover']};
-            }}
-        """)
+        btn.setStyleSheet(HEADER_BTN_QSS.format(**THEMES[self.theme_name]))
         return btn
 
     def apply_scroll_style(self):
@@ -303,7 +321,6 @@ class CSwapWidget(QWidget):
         self.theme_btn.setText("☀️" if self.theme_name == "dark" else "🌙")
 
         t = THEMES[self.theme_name]
-        self.shadow.setColor(t["shadow_color"])
         self.apply_container_style()
         self.apply_best_btn_style()
         self.apply_refresh_btn_style()
@@ -313,20 +330,9 @@ class CSwapWidget(QWidget):
         self.status_label.setStyleSheet(f"font-size: 11px; color: {t['text_secondary']};")
         self.footer_label.setStyleSheet(f"font-size: 10px; color: {t['text_muted']};")
 
-        for btn in [self.pin_btn, self.theme_btn]:
-            btn.setStyleSheet(f"""
-                QPushButton {{
-                    background-color: {t['header_btn_bg']};
-                    color: {t['text_primary']};
-                    border: 1px solid {t['card_border']};
-                    border-radius: 6px;
-                    font-size: 12px;
-                    font-weight: bold;
-                }}
-                QPushButton:hover {{
-                    background-color: {t['header_btn_hover']};
-                }}
-            """)
+        for btn in [self.pin_btn, self.theme_btn, self.min_btn, self.close_btn]:
+            btn.setStyleSheet(HEADER_BTN_QSS.format(**t))
+        self.close_btn.setStyleSheet(self.close_btn.styleSheet() + CLOSE_BTN_HOVER)
 
         self.render_cards()
         self.save_position()
@@ -401,20 +407,41 @@ class CSwapWidget(QWidget):
             )
             self.card_list_layout.insertWidget(self.card_list_layout.count() - 1, card)
 
-    # --- Drag & Drop window movement ---
+    # --- Drag to move, edge-drag to resize ---
+    def _edges_at(self, pos) -> Qt.Edge:
+        """Which window edges the cursor is hovering, for frameless resizing."""
+        edges = Qt.Edge(0)
+        if pos.x() <= RESIZE_MARGIN:
+            edges |= Qt.Edge.LeftEdge
+        elif pos.x() >= self.width() - RESIZE_MARGIN:
+            edges |= Qt.Edge.RightEdge
+        if pos.y() <= RESIZE_MARGIN:
+            edges |= Qt.Edge.TopEdge
+        elif pos.y() >= self.height() - RESIZE_MARGIN:
+            edges |= Qt.Edge.BottomEdge
+        return edges
+
     def mousePressEvent(self, event):
+        """Hand both move and resize to the OS, so the two can never fight."""
         if event.button() == Qt.MouseButton.LeftButton:
-            self.drag_position = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            edges = self._edges_at(event.position().toPoint())
+            if edges:
+                self.windowHandle().startSystemResize(edges)
+            else:
+                self.windowHandle().startSystemMove()
             event.accept()
 
     def mouseMoveEvent(self, event):
-        if event.buttons() == Qt.MouseButton.LeftButton:
-            self.move(event.globalPosition().toPoint() - self.drag_position)
-            event.accept()
+        self.setCursor(RESIZE_CURSORS.get(self._edges_at(event.position().toPoint()),
+                                          Qt.CursorShape.ArrowCursor))
 
-    def mouseReleaseEvent(self, event):
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
         self.save_position()
-        event.accept()
+
+    def moveEvent(self, event):
+        super().moveEvent(event)
+        self.save_position()
 
     def closeEvent(self, event):
         self.save_position()

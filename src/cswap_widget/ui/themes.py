@@ -1,11 +1,10 @@
-from PyQt6.QtGui import QColor
 
 THEMES = {
     "dark": {
-        "bg_window": "rgba(22, 27, 34, 0.94)",
-        "card_bg": "rgba(33, 38, 45, 0.85)",
+        "bg_window": "#161b22",
+        "card_bg": "#21262d",
         "card_border": "rgba(240, 246, 252, 0.1)",
-        "card_active_bg": "rgba(16, 44, 30, 0.85)",
+        "card_active_bg": "#102c1e",
         "card_active_border": "rgba(46, 160, 67, 0.8)",
         "text_primary": "#f0f6fc",
         "text_secondary": "#8b949e",
@@ -17,13 +16,12 @@ THEMES = {
         "header_btn_bg": "rgba(255, 255, 255, 0.08)",
         "header_btn_hover": "rgba(255, 255, 255, 0.18)",
         "bar_bg": "rgba(255, 255, 255, 0.1)",
-        "shadow_color": QColor(0, 0, 0, 160),
     },
     "light": {
-        "bg_window": "rgba(246, 248, 250, 0.95)",
-        "card_bg": "rgba(255, 255, 255, 0.90)",
+        "bg_window": "#f6f8fa",
+        "card_bg": "#ffffff",
         "card_border": "rgba(209, 217, 224, 0.8)",
-        "card_active_bg": "rgba(230, 249, 236, 0.95)",
+        "card_active_bg": "#e6f9ec",
         "card_active_border": "rgba(31, 136, 61, 0.8)",
         "text_primary": "#1f2328",
         "text_secondary": "#57606a",
@@ -35,7 +33,6 @@ THEMES = {
         "header_btn_bg": "rgba(0, 0, 0, 0.06)",
         "header_btn_hover": "rgba(0, 0, 0, 0.12)",
         "bar_bg": "rgba(0, 0, 0, 0.08)",
-        "shadow_color": QColor(0, 0, 0, 70),
     },
 }
 

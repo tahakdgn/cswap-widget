@@ -24,4 +24,5 @@ class AccountStatus:
     seven_day_reset_in: Optional[str]
     scoped_quotas: List[ScopedQuota] = field(default_factory=list)
     is_max_plan: bool = False
+    needs_relogin: bool = False
 

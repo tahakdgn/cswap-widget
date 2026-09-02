@@ -63,6 +63,22 @@ class AccountCard(QFrame):
         )
         top_row.addWidget(email_label, 1)
 
+        if self.acc.needs_relogin:
+            relogin_badge = QLabel("⚠ Yeniden giriş")
+            relogin_badge.setToolTip(
+                "Token süresi doldu — bu hesabın verileri eski.\n"
+                "Claude Code'da /login ile bu hesaba gir, sonra: cswap add"
+            )
+            relogin_badge.setStyleSheet("""
+                background-color: #b91c1c;
+                color: #ffffff;
+                font-weight: bold;
+                font-size: 10px;
+                padding: 2px 8px;
+                border-radius: 8px;
+            """)
+            top_row.addWidget(relogin_badge)
+
         # Plan Rozeti (MAX PLAN veya PRO)
         if self.acc.is_max_plan:
             plan_badge = QLabel("⚡ MAX PLAN")
@@ -125,7 +141,7 @@ class AccountCard(QFrame):
 
         # 5-hour quota bar
         layout.addLayout(self._create_quota_row(
-            title="5 Saatlik Kota",
+            title="5 Saatlik Kota" + (" (eski veri)" if self.acc.needs_relogin else ""),
             pct=self.acc.five_hour_pct,
             reset_time=self.acc.five_hour_reset_time,
             reset_in=self.acc.five_hour_reset_in
@@ -133,7 +149,7 @@ class AccountCard(QFrame):
 
         # 7-day quota bar
         layout.addLayout(self._create_quota_row(
-            title="7 Günlük Kota",
+            title="7 Günlük Kota" + (" (eski veri)" if self.acc.needs_relogin else ""),
             pct=self.acc.seven_day_pct,
             reset_time=self.acc.seven_day_reset_time,
             reset_in=self.acc.seven_day_reset_in

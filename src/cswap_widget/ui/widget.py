@@ -357,7 +357,11 @@ class CSwapWidget(QWidget):
             self.status_label.setText(f"⚠️ Hata: {error[:30]} ({now_str})")
         else:
             self.accounts = accounts
-            self.status_label.setText(f"✓ Son kontrol: {now_str} ({len(accounts)} hesap)")
+            stale = sum(1 for a in accounts if a.needs_relogin)
+            if stale:
+                self.status_label.setText(f"⚠️ {stale} hesabın tokeni süresi doldu — yeniden giriş gerekli ({now_str})")
+            else:
+                self.status_label.setText(f"✓ Son kontrol: {now_str} ({len(accounts)} hesap)")
             self.render_cards()
 
     def trigger_best_switch(self):

@@ -20,6 +20,7 @@ def parse_cswap_json(json_str: str) -> List[AccountStatus]:
             org = acc.get("organizationName", "")
             is_active = acc.get("active", False) or (acc_id == active_num)
 
+            needs_relogin = acc.get("usageStatus") not in (None, "ok")
             usage = acc.get("usage") or acc.get("lastGoodUsage") or {}
 
             five_h = usage.get("fiveHour") or {}
@@ -56,7 +57,8 @@ def parse_cswap_json(json_str: str) -> List[AccountStatus]:
                 seven_day_reset_time=seven_day_reset_time,
                 seven_day_reset_in=seven_day_reset_in,
                 scoped_quotas=scoped_quotas,
-                is_max_plan=is_max_plan
+                is_max_plan=is_max_plan,
+                needs_relogin=needs_relogin
             ))
 
         return accounts
@@ -99,6 +101,7 @@ def parse_cswap_output(output: str) -> List[AccountStatus]:
         scoped_quotas: List[ScopedQuota] = []
 
         block_text = "\n".join(lines[1:])
+        needs_relogin = "re-login needed" in block_text.lower()
 
         # 5h line matching: e.g. "├ 5h:  27%   resets 17:09   in 3h 41m"
         m_5h = re.search(r'5h:\s*(\d+)%(?:.*?resets\s+([a-zA-Z0-9:\s]+?)\s+in\s+([^\n\r]+))?', block_text)
@@ -142,7 +145,8 @@ def parse_cswap_output(output: str) -> List[AccountStatus]:
             seven_day_reset_time=seven_day_reset_time,
             seven_day_reset_in=seven_day_reset_in,
             scoped_quotas=scoped_quotas,
-            is_max_plan=is_max_plan
+            is_max_plan=is_max_plan,
+            needs_relogin=needs_relogin
         ))
 
     return accounts

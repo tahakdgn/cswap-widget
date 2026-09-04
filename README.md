@@ -32,10 +32,12 @@ Arka planda popüler açık kaynaklı CLI aracı **`claude-swap` (cswap)** ile e
 - 📊 **Canlı Kota Görselleştirmesi:** Her hesabın 5 saatlik ve 7 günlük kullanım yüzdeleri renkli ilerleme çubukları (%0-%50 Yeşil, %50-%80 Sarı, %80+ Kırmızı) ile gösterilir.
 - ⚡ **Tek Tıkla Akıllı Geçiş:** *"En İyi Hesaba Geç"* butonu ile arka planda otomatik en boş hesaba geçiş yapılır.
 - 🎯 **Doğrudan Hesap Seçimi:** Her hesap kartındaki *"Geçiş Yap"* butonu ile istenen hesaba anında geçilebilir.
+- 🌐 **Chrome Profil Entegrasyonu:** Her hesabın Chrome profili (`Local State`) otomatik taranıp eşleştirilir. Kartlardaki *"🌐 Web"* butonuyla o hesaba ait izole Chrome penceresinde Claude anında açılır.
+- 🚀 **Geçişte Otomatik Chrome Başlatma:** Başlık çubuğundaki `🌐` ikonu ile kontrol edilebilen ayar sayesinde hesap değiştirildiğinde ilgili Chrome profili otomatik olarak başlatılır.
 - 🎨 **Dark / Light Glassmorphism Teması:** Yarı saydam pencereler, yumuşak gölgeler ve koyu/açık mod geçişi (☀️ / 🌙).
 - 📌 **Always-On-Top (Üstte Sabitleme):** Kodlama yaparken veya Claude Code terminalinde çalışırken widget'ı ekranda sabit tutabilme (📌).
 - 🪟 **Sürüklenebilir & Konum Hatırlama:** Pencere ekranın istenen yerine sürüklenebilir; kapatılıp açıldığında konum ve tema ayarlarını hatırlar.
-- 🔔 **Sistem Tepsisi (System Tray):** Görev çubuğuna küçültülebilir, tepsi menüsü üzerinden durum yenileme ve geçiş yapılabilir.
+- 🔔 **Sistem Tepsisi (System Tray):** Görev çubuğuna küçültülebilir, tepsi menüsü üzerinden durum yenileme, geçiş yapma ve aktif Chrome profilini açma desteği.
 - ⏱️ **Otomatik & Manuel Yenileme:** Saat başı otomatik kota kontrolü ve geri sayım sayacı, istenirse anlık *"↻ Yenile"* desteği.
 
 ---
@@ -124,6 +126,7 @@ cswap-widget/
 │       │   └── tray.py          # Sistem tepsisi (System Tray) menüsü
 │       └── utils/               # Yardımcı araçlar
 │           ├── __init__.py
+│           ├── chrome.py        # Chrome profili tespiti ve tarayıcı başlatıcı
 │           └── shortcut.py      # Dinamik masaüstü kısayol oluşturucu
 ├── scripts/
 │   ├── start.bat                # Windows arka plan başlatma scripti

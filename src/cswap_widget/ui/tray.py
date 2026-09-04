@@ -24,6 +24,9 @@ class SystemTrayManager:
         best_action = QAction("En İyi Hesaba Geç", self.parent)
         best_action.triggered.connect(self.parent.trigger_best_switch)
 
+        chrome_action = QAction("🌐 Aktif Hesabı Chrome'da Aç", self.parent)
+        chrome_action.triggered.connect(self._open_active_in_chrome)
+
         refresh_action = QAction("↻ Yenile", self.parent)
         refresh_action.triggered.connect(self.parent.refresh_data)
 
@@ -32,6 +35,7 @@ class SystemTrayManager:
 
         tray_menu.addAction(show_action)
         tray_menu.addAction(best_action)
+        tray_menu.addAction(chrome_action)
         tray_menu.addAction(refresh_action)
         tray_menu.addSeparator()
         tray_menu.addAction(quit_action)
@@ -54,3 +58,10 @@ class SystemTrayManager:
             QSystemTrayIcon.MessageIcon.Information,
             msecs
         )
+
+    def _open_active_in_chrome(self):
+        active_acc = next((a for a in getattr(self.parent, "accounts", []) if a.is_active), None)
+        if active_acc:
+            self.parent.handle_open_chrome(active_acc.email)
+        elif getattr(self.parent, "accounts", []):
+            self.parent.handle_open_chrome(self.parent.accounts[0].email)

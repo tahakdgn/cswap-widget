@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ..core.executor import fetch_cswap_accounts, switch_to_best_account, switch_to_account_id
+from ..utils.chrome import open_claude_for_account
 from .themes import THEMES
 from .card import AccountCard
 from .tray import SystemTrayManager
@@ -63,6 +64,9 @@ class CSwapWidget(QWidget):
         self.settings = QSettings("cswap", "widget")
         self.theme_name = self.settings.value("theme", "dark")
         self.is_pinned = self.settings.value("pinned", True, type=bool)
+        self.auto_open_chrome = self.settings.value("auto_open_chrome", True, type=bool)
+        self._last_switch_target_id = None
+        self._pending_best_chrome_launch = False
         self.next_refresh_seconds = 3600  # 1 hour
         self.accounts = []
         self.worker = None
@@ -100,6 +104,7 @@ class CSwapWidget(QWidget):
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.setValue("theme", self.theme_name)
         self.settings.setValue("pinned", self.is_pinned)
+        self.settings.setValue("auto_open_chrome", self.auto_open_chrome)
 
     def _init_ui(self):
         t = THEMES[self.theme_name]
@@ -125,6 +130,11 @@ class CSwapWidget(QWidget):
             f"font-family: 'Segoe UI', sans-serif; letter-spacing: 0.3px;"
         )
         header_layout.addWidget(self.title_label, 1)
+
+        self.chrome_toggle_btn = self._create_header_btn("🌐", "Geçişte Chrome profilini otomatik aç")
+        self.chrome_toggle_btn.clicked.connect(self.toggle_auto_open_chrome)
+        self._update_chrome_toggle_btn_style()
+        header_layout.addWidget(self.chrome_toggle_btn)
 
         self.pin_btn = self._create_header_btn("📌" if self.is_pinned else "📍", "Pencereyi Üstte Sabitle")
         self.pin_btn.clicked.connect(self.toggle_pin)
@@ -333,9 +343,56 @@ class CSwapWidget(QWidget):
         for btn in [self.pin_btn, self.theme_btn, self.min_btn, self.close_btn]:
             btn.setStyleSheet(HEADER_BTN_QSS.format(**t))
         self.close_btn.setStyleSheet(self.close_btn.styleSheet() + CLOSE_BTN_HOVER)
+        self._update_chrome_toggle_btn_style()
 
         self.render_cards()
         self.save_position()
+
+    def _update_chrome_toggle_btn_style(self):
+        t = THEMES[self.theme_name]
+        if self.auto_open_chrome:
+            self.chrome_toggle_btn.setToolTip("Geçişte Chrome profilini otomatik aç: AÇIK (Kapatmak için tıkla)")
+            self.chrome_toggle_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {t['header_btn_bg']};
+                    color: {t['accent']};
+                    border: 1px solid {t['accent']};
+                    border-radius: 6px;
+                    font-size: 13px;
+                }}
+                QPushButton:hover {{
+                    background-color: {t['header_btn_hover']};
+                }}
+            """)
+        else:
+            self.chrome_toggle_btn.setToolTip("Geçişte Chrome profilini otomatik aç: KAPALI (Açmak için tıkla)")
+            self.chrome_toggle_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {t['header_btn_bg']};
+                    color: {t['text_muted']};
+                    border: 1px solid {t['card_border']};
+                    border-radius: 6px;
+                    font-size: 13px;
+                }}
+                QPushButton:hover {{
+                    background-color: {t['header_btn_hover']};
+                }}
+            """)
+
+    def toggle_auto_open_chrome(self):
+        self.auto_open_chrome = not self.auto_open_chrome
+        self._update_chrome_toggle_btn_style()
+        self.save_position()
+        status_msg = "Açık" if self.auto_open_chrome else "Kapalı"
+        self.status_label.setText(f"🌐 Geçişte Chrome açma: {status_msg}")
+
+    def handle_open_chrome(self, email: str):
+        success, msg = open_claude_for_account(email)
+        now_str = datetime.now().strftime("%H:%M:%S")
+        if success:
+            self.status_label.setText(f"✓ {msg} ({now_str})")
+        else:
+            self.status_label.setText(f"⚠️ {msg} ({now_str})")
 
     def _on_second_tick(self):
         if self.next_refresh_seconds > 0:
@@ -363,6 +420,13 @@ class CSwapWidget(QWidget):
             self.status_label.setText(f"⚠️ Hata: {error[:30]} ({now_str})")
         else:
             self.accounts = accounts
+            if self._pending_best_chrome_launch:
+                self._pending_best_chrome_launch = False
+                if self.auto_open_chrome:
+                    active_acc = next((a for a in accounts if a.is_active), None)
+                    if active_acc:
+                        self.handle_open_chrome(active_acc.email)
+
             stale = sum(1 for a in accounts if a.needs_relogin)
             if stale:
                 self.status_label.setText(f"⚠️ {stale} hesabın tokeni süresi doldu — yeniden giriş gerekli ({now_str})")
@@ -371,6 +435,7 @@ class CSwapWidget(QWidget):
             self.render_cards()
 
     def trigger_best_switch(self):
+        self._pending_best_chrome_launch = True
         self.best_btn.setEnabled(False)
         self.best_btn.setText("⏳ En iyi hesaba geçiliyor...")
 
@@ -379,6 +444,7 @@ class CSwapWidget(QWidget):
         self.best_worker.start()
 
     def trigger_id_switch(self, acc_id: int):
+        self._last_switch_target_id = acc_id
         self.best_btn.setEnabled(False)
         self.best_btn.setText(f"⏳ #{acc_id} hesabına geçiliyor...")
 
@@ -391,6 +457,13 @@ class CSwapWidget(QWidget):
         self.best_btn.setEnabled(True)
         self.apply_best_btn_style()
         self.best_btn.setText("En İyi Hesaba Geç")
+
+        if success and self.auto_open_chrome and self._last_switch_target_id:
+            target_acc = next((a for a in self.accounts if a.id == self._last_switch_target_id), None)
+            if target_acc:
+                self.handle_open_chrome(target_acc.email)
+        self._last_switch_target_id = None
+
         self.refresh_data()
 
     def render_cards(self):
@@ -403,7 +476,8 @@ class CSwapWidget(QWidget):
             card = AccountCard(
                 acc=acc,
                 theme_name=self.theme_name,
-                on_switch_callback=self.trigger_id_switch
+                on_switch_callback=self.trigger_id_switch,
+                on_chrome_callback=self.handle_open_chrome
             )
             self.card_list_layout.insertWidget(self.card_list_layout.count() - 1, card)
 

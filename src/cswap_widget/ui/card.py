@@ -3,18 +3,20 @@ from PyQt6.QtWidgets import (
     QFrame, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QProgressBar, QSizePolicy
 )
 from ..core.models import AccountStatus
+from ..utils.chrome import find_chrome_profile_for_account, open_claude_for_account
 from .themes import THEMES, get_progress_color
 
 
 class AccountCard(QFrame):
     """Component rendering a single Claude account card with quota progress bars and actions."""
 
-    def __init__(self, acc: AccountStatus, theme_name: str, on_switch_callback=None):
+    def __init__(self, acc: AccountStatus, theme_name: str, on_switch_callback=None, on_chrome_callback=None):
         super().__init__()
         self.acc = acc
         self.theme_name = theme_name
         self.theme = THEMES[theme_name]
         self.on_switch_callback = on_switch_callback
+        self.on_chrome_callback = on_chrome_callback
         self.init_ui()
 
     def init_ui(self):
@@ -110,6 +112,42 @@ class AccountCard(QFrame):
                 border-radius: 8px;
             """)
             top_row.addWidget(pro_badge)
+
+        # Chrome ile Claude Web Profilini Aç Butonu
+        profile = find_chrome_profile_for_account(self.acc.email)
+        profile_name = profile["name"] if profile and profile.get("name") else ""
+        profile_key = profile["profile_key"] if profile and profile.get("profile_key") else ""
+        if profile_name and profile_key:
+            profile_hint = f" ({profile_name} · {profile_key})"
+        elif profile_name:
+            profile_hint = f" ({profile_name})"
+        else:
+            profile_hint = ""
+
+        chrome_btn = QPushButton("🌐 Web")
+        chrome_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        chrome_btn.setToolTip(f"Chrome profilinde Claude'u aç{profile_hint}\nhttps://claude.ai")
+        chrome_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {t['header_btn_bg']};
+                color: {t['text_primary']};
+                border: 1px solid {t['card_border']};
+                font-size: 11px;
+                font-weight: 600;
+                padding: 3px 8px;
+                border-radius: 6px;
+            }}
+            QPushButton:hover {{
+                background-color: {t['header_btn_hover']};
+                color: {t['accent']};
+                border: 1px solid {t['accent']};
+            }}
+        """)
+        if self.on_chrome_callback:
+            chrome_btn.clicked.connect(lambda checked=False, em=self.acc.email: self.on_chrome_callback(em))
+        else:
+            chrome_btn.clicked.connect(lambda checked=False, em=self.acc.email: open_claude_for_account(em))
+        top_row.addWidget(chrome_btn)
 
         if is_active:
             active_badge = QLabel("● Aktif")
